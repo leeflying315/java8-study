@@ -21,7 +21,7 @@ public class ChatClient
         ChatClient chatClient = new ChatClient();
         String response = chatClient.sendMessage("hello 小师妹！");
         System.out.println("response is " + response);
-        response = chatClient.sendMessage("能不能？");
+        response = chatClient.sendMessage("再见");
         System.out.println("response is " + response);
         chatClient.stop();
 
