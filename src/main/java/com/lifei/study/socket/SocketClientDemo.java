@@ -1,4 +1,4 @@
-package com.lifei.study;
+package com.lifei.study.socket;
 
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
