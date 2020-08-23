@@ -16,7 +16,6 @@ public class StringDemo
                 sb.append("%20");
             }
         }
-        s.replaceFirst()
         return sb.toString();
     }
 }
