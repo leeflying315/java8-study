@@ -1,5 +1,6 @@
 package com.lifei.study.threadstudy;
 
+// 两个线程交替打印
 public class TwoThreadPrint implements Runnable
 {
 
