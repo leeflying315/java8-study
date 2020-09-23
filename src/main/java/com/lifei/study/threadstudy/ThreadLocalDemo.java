@@ -2,7 +2,7 @@ package com.lifei.study.threadstudy;
 
 /**
  * @Author: lifei
- * @Description:
+ * @Description: 线程本地变量测试
  * @Date: 2020/9/14
  */
 public class ThreadLocalDemo {
