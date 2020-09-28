@@ -21,6 +21,31 @@ HashMap插入数据过程：
 
 实际应用中，若搜索的次数远远大于插入和删除，那么选择AVL，如果搜索，插入删除次数几乎差不多，应该选择RB。
 
+
+
+## Java延迟队列
+
+**Timer**
+
+JDK自带的定时器
+
+存在schedule和scheduleAtFixedRate两套不同调度算法的方法， 它们的共同点是若判断理论执行时间小于实际执行时间时，都会马上执行任务，区别在于计算下一次执行时间的方式不同：
+
+- schedule： 任务开始的时间 + period（时间片段），强调“固定间隔”地执行任务
+- scheduleAtFixedRate： 参数设定开始的时间 + period（时间片段），强调“固定频率”地执行任务
+
+可以看出前者采用实际值，后者采用理论值。不过实际上若参数设定的开始时间比当前时间大的话，两者执行的效果是一样的。
+
+**缺点**
+
+Timer被设计成支持多个定时任务，通过源码发现它有一个任务队列用来存放这些定时任务，并且启动了一个线程来处理。
+
+通过这种单线程的方式实现，在存在多个定时任务的时候便会存在问题： 若任务B执行时间过长，将导致任务A延迟了启动时间！
+
+还存在另外一个问题，应该是属于设计的问题： 若任务线程在执行队列中某个任务时，该任务抛出异常，将导致线程因跳出循环体而终止，即Timer停止了工作！
+
+
+
 **NIO和BIO区别**
 
 
@@ -60,3 +85,48 @@ HashMap插入数据过程：
 **Spring autowired 和resource注解区别**
 
 ​	@Resource的作用相当于@Autowired，只不过@Autowired按byType自动注入，而@Resource默认按 byName自动注入罢了。@Resource有两个属性是比较重要的，分是name和type，Spring将@Resource注解的name属性解析为bean的名字，而type属性则解析为bean的类型。所以如果使用name属性，则使用byName的自动注入策略，而使用type属性时则使用byType自动注入策略。如果既不指定name也不指定type属性，这时将通过反射机制使用byName自动注入策略。
+
+**SpringBoot加载配置文件**
+
+可放置目录(优先级从高到低)
+
+```bash
+1. ./config/ (当前项目路径config目录下); 
+2. ./ (当前项目路径下); 
+3. classpath:/config/ (类路径config目录下); 
+4. classpath:/ (类路径config下).
+```
+
+SpringBoot会从这四个位置全部加载配置文件并互补配置；
+
+**@ConfigurationProperties与@Value两种注解对比**
+
+| 比较项                    | @ConfigurationProperties | @Value |
+| :------------------------ | :----------------------- | :----- |
+| 全量注入                  | 支持                     | 不支持 |
+| 松散绑定(Relaxed Binding) | 支持                     | 不支持 |
+| SpEL                      | 不支持                   | 支持   |
+| JSR303                    | 支持                     | 不支持 |
+
+松散绑定：驼峰命名(userName)、横干拼接(user-name)、下划线（user_name）之间可以互相识别绑定称为做松散绑定 
+
+JSR303：通过@Email，@Nullable，@Digits 等等注解进行邮箱、判空、数字格式等等数据的校验
+
+@ConfigurationProperties通常用于将配置全量注入某个类中； @Value通常用于注入某一些特定配置值中；
+
+**单例模式和静态类区别**
+
+单例模式是面向对象的设计。本质上还是创建对象，调用方法。单例存在的根本就是为了得到对象。
+
+静态类是单纯使用方法体，对象没有存在的价值。所以直接使用类名调用，不创建对象。静态类存在是为了快捷方便的使用里面的方法。
+
+## HttpClient
+
+**ConnectionRequestTimeout**
+
+httpclient使用连接池来管理连接，这个时间就是从连接池获取连接的超时时间，可以想象下数据库连接池
+
+**ConnectTimeout**
+
+连接建立时间，三次握手完成时间
+

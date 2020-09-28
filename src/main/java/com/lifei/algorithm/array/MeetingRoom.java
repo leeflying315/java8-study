@@ -1,8 +1,5 @@
 package com.lifei.algorithm.array;
 
-import com.lifei.support.Interval;
-
-import java.util.Arrays;
 import java.util.Comparator;
 import java.util.PriorityQueue;
 

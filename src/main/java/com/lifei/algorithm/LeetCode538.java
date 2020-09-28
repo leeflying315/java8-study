@@ -1,5 +1,7 @@
 package com.lifei.algorithm;
 
+import com.lifei.algorithm.support.TreeNode;
+
 /**
  * @Author: lifei
  * @Description: 538. 把二叉搜索树转换为累加树
@@ -34,16 +36,6 @@ public class LeetCode538 {
             target.right = new TreeNode(original.right.val + getSumValue(root, original.right.val));
         deepCopy(original.left, root,target.left);
         deepCopy(original.right, root, target.right);
-    }
-
-    public class TreeNode {
-        int val;
-        TreeNode left;
-        TreeNode right;
-
-        TreeNode(int x) {
-            val = x;
-        }
     }
 
     // 优化后：

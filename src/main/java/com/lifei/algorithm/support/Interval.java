@@ -1,4 +1,4 @@
-package com.lifei.support;
+package com.lifei.algorithm.support;
 
 public class Interval {
     public int start;
