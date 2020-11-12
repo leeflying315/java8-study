@@ -1,4 +1,4 @@
-package com.lifei.algorithm.multitheadingstudy;
+package com.lifei.study.threadstudy;
 
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Semaphore;
