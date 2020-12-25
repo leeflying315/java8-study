@@ -484,6 +484,7 @@ volatile 关键字禁止指令重排序有两层意思：
 - 它会强制将对缓存的修改操作立即写入主存；
 - 如果是写操作，它会导致其他 CPU 中对应的缓存行无效。
 
+<<<<<<< Updated upstream
 ## 数据库
 
 ## Mybatis
@@ -494,3 +495,16 @@ java.util.Date实际上是能够表示MySQL的三种字段类型
 2. datetime
 3. timestamp
 
+=======
+# 数据库
+
+## Mybatis
+
+## MyBatis的实现逻辑
+
+1. 在 MyBatis 的初始化过程中，会生成一个 Configuration 全局配置对象，里面包含了所有初始化过程中生成对象
+2. 根据 Configuration 创建一个 SqlSessionFactory 对象，用于创建 SqlSession “会话”
+3. 通过 SqlSession 可以获取到 Mapper 接口对应的动态代理对象，去执行数据库的相关操作
+4. 动态代理对象执行数据库的操作，由 SqlSession 执行相应的方法，在他的内部调用 Executor 执行器去执行数据库的相关操作
+5. 在 Executor 执行器中，会进行相应的处理，将数据库执行结果返回
+>>>>>>> Stashed changes
