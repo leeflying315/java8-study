@@ -194,6 +194,18 @@ JSR303：通过@Email，@Nullable，@Digits 等等注解进行邮箱、判空、
 
 静态类是单纯使用方法体，对象没有存在的价值。所以直接使用类名调用，不创建对象。静态类存在是为了快捷方便的使用里面的方法。
 
+**Spring中拦截器和过滤器的区别**
+
+1. 拦截器不依赖与servlet容器是SpringMVC自带的，过滤器依赖于Servlet容器。
+2. 拦截器是基于java的反射机制的，而过滤器是基于函数回调。
+3. 拦截器只能对action请求起作用，而过滤器则可以对几乎所有的请求起作用。
+4. 拦截器可以访问controller上下文、值栈里的对象，而过滤器不能访问。(拦截器的preHandle方法在进入controller前执行，而拦截器的postHandle方法在执行完controller业务流程后，在视图解析器解析ModelAndView之前执行，可以操控Controller的ModelAndView内容。而afterCompletion是在视图解析器解析渲染ModelAndView完成之后执行的)( 过滤器是在服务器启动时就会创建的，只会创建一个实例，常驻内存，也就是说服务器一启动就会执行Filter的init(FilterConfig config)方法.当Filter被移除或服务器正常关闭时，会执行destroy方法)
+5. 拦截器可以获取IOC容器中的各个bean，而过滤器就不行，这点很重要，在拦截器里注入一个service，可以调用业务逻辑。(关于这句话的解读是：我们知道拦截器是SprinMVC自带的，而SpringMVC存在Controller层的，而controller层可以访问到service层，service层是不能访问service层的，而过滤器是客户端和服务端之间请求与响应的过滤)
+6. 过滤器和拦截器触发时机、时间、地方不一样。(过滤器是在请求进入容器后，但请求进入servlet之前进行预处理的。请求结束返回也是在servlet处理完后，返回给前端之前,如果看不懂可以看7完后再来理解)
+7. 过滤器包裹住servlet，servlet包裹住拦截器。
+
+
+
 ## HttpClient
 
 **ConnectionRequestTimeout**
@@ -471,4 +483,14 @@ volatile 关键字禁止指令重排序有两层意思：
 - 它确保指令重排序时不会把其后面的指令排到内存屏障之前的位置，也不会把前面的指令排到内存屏障的后面；即在执行到内存屏障这句指令时，在它前面的操作已经全部完成；
 - 它会强制将对缓存的修改操作立即写入主存；
 - 如果是写操作，它会导致其他 CPU 中对应的缓存行无效。
+
+## 数据库
+
+## Mybatis
+
+java.util.Date实际上是能够表示MySQL的三种字段类型
+
+1. date
+2. datetime
+3. timestamp
 
