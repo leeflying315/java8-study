@@ -204,7 +204,7 @@ JSR303：通过@Email，@Nullable，@Digits 等等注解进行邮箱、判空、
 6. 过滤器和拦截器触发时机、时间、地方不一样。(过滤器是在请求进入容器后，但请求进入servlet之前进行预处理的。请求结束返回也是在servlet处理完后，返回给前端之前,如果看不懂可以看7完后再来理解)
 7. 过滤器包裹住servlet，servlet包裹住拦截器。
 
-
+**Configuration 和ConfigurationProperty注解**
 
 ## HttpClient
 

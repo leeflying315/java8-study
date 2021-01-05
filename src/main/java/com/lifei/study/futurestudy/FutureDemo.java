@@ -9,7 +9,4 @@ import java.util.concurrent.Future;
  */
 public class FutureDemo {
 
-    public Future<Boolean> isSucceed(){
-//        Future<Boolean> future = new Fu
-    }
 }
