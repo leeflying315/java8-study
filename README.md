@@ -484,7 +484,16 @@ volatile 关键字禁止指令重排序有两层意思：
 - 它会强制将对缓存的修改操作立即写入主存；
 - 如果是写操作，它会导致其他 CPU 中对应的缓存行无效。
 
-<<<<<<< Updated upstream
+### 线程变量 ThreadLocal
+
+在threadlocal的生命周期中,都存在这些引用. 看下图: 实线代表强引用,虚线代表弱引用
+
+![](.\笔记\pic\java8\ThreadLocal.png)
+
+> 图中，ThreadLocalMap维护一个Entry的数组，所以一个线程可以有多个ThreadLocal实例。
+
+![](.\笔记\pic\java8\ThreadLocal核心土.png)
+
 ## 数据库
 
 ## Mybatis
@@ -495,7 +504,6 @@ java.util.Date实际上是能够表示MySQL的三种字段类型
 2. datetime
 3. timestamp
 
-=======
 # 数据库
 
 ## Mybatis
@@ -507,4 +515,22 @@ java.util.Date实际上是能够表示MySQL的三种字段类型
 3. 通过 SqlSession 可以获取到 Mapper 接口对应的动态代理对象，去执行数据库的相关操作
 4. 动态代理对象执行数据库的操作，由 SqlSession 执行相应的方法，在他的内部调用 Executor 执行器去执行数据库的相关操作
 5. 在 Executor 执行器中，会进行相应的处理，将数据库执行结果返回
->>>>>>> Stashed changes
+
+## 索引
+
+MySQL 索引分为 **主键索引** (或聚簇索引)和 **二级索引** (或非主键索引、非聚簇索引、辅助索引，包括各种主键索引外的其他所有索引)。不同存储引擎对于数据的组织方式略有不同。
+
+对InnoDB而言，主键索引和数据是存放在一起的，构成一颗B+树(称为索引组织表)，**主键位于非叶子节点，数据存放于叶子节点**。示意图如下：
+
+![索引图片](./笔记/pic/java8/索引.png)
+
+而MyISAM是堆组织表，主键索引和数据分开存放，叶子节点保存的只是数据的物理地址，示意图如下：
+
+![](./笔记\pic\java8\MyISAM主键索引.png)
+
+二级索引的组织方式对于InnoDB和MyISAM是一样的，保存了二级索引和主键索引的对应关系，**二级索引列位于非叶子节点，主键值位于叶子节点**，示意图如下：
+
+![二级索引](.\笔记\pic\java8\二级索引.png)
+
+以select * from t where name='aaa'为例，MySQL Server对sql进行解析后发现name字段有索引可用，于是先在二级索引上根据name='aaa'找到主键id=17，然后根据主键17到主键索引上上找到需要的记录。
+
