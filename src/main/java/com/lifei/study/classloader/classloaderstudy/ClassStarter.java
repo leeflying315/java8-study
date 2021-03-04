@@ -1,4 +1,4 @@
-package com.lifei.study.classloaderstudy;
+package com.lifei.study.classloader.classloaderstudy;
 
 /**
  * @Author lifei
