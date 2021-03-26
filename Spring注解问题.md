@@ -29,3 +29,16 @@
 ## 原理分析
 
 Spring使用反射机制加载Bean，生成代理类，扫描所有的public方法。因此静态变量和私有方法都不会被加载。但此处正常输出和空指针异常差异点在调用方的private和public方法，因此需要分析的重点在于注解的加载机制。
+
+分析注解机制可以发现，注解扫描的时候并不会反射私有方法。
+
+~~~java
+    @Pointcut("execution(* com.test.spring.example.demo.controler.*.*(..))")
+    public void webLog(){
+       log.info("LogAspect.webLog");
+    }
+~~~
+
+编写Spring中对应的切片发现，切片无法切到/second方法接口，但是可以拦截到/first接口。因此验证了切片并不能拦截到私有方法。
+
+此时就有另一个问题，为什么RequestMapping注解可以把私有方法注册URL绑定起来。

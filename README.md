@@ -111,7 +111,53 @@ Netty中两大线程池：
 
 
 
+## SELECT、EPOLL模型
+
+1. NIC（网卡） 接收到数据，通过 DMA 方式写入内存(Ring Buffer 和 sk_buff)。
+2. NIC 发出中断请求（IRQ），告诉内核有新的数据过来了。
+3. Linux 内核响应中断，系统切换为内核态，处理 Interrupt Handler，从RingBuffer 拿出一个 Packet， 并处理协议栈，填充 Socket 并交给用户进程。
+4. 系统切换为用户态，用户进程处理数据内容。
+
+![](.\笔记\pic\java8\网卡数据流.png)
+
+为了防止硬中断过多，打断CPU执行计划。因此网卡使用了NAPI技术，硬中断转换为软中断，积累一批数据进行处理。
+
+![](.\笔记\pic\java8\网卡NAPI技术.png)
+
+
+
+- #### select （一次O(n)查找）
+
+1. 每次传给内核一个用户空间分配的 fd_set 用于表示“关心的 socket”。其结构（相当于 bitset）限制了只能保存1024个 socket。
+
+2. 每次 socket 状态变化，内核利用 fd_set 查询O(1)，就能知道监视进程是否关心这个 socket。
+
+3. 内核是复用了 fd_set 作为出参，返还给监视进程（所以每次 select 入参需要重置）。
+
+   然而监视进程必须遍历一遍 socket 数组O(n)，才知道哪些 socket 就绪了。
+
+- #### epoll （全是O(1)查找）
+
+1. 每次传给内核一个实例句柄。这个句柄是在内核分配的红黑树 rbr+双向链表 rdllist。只要句柄不变，内核就能复用上次计算的结果。
+
+2. 每次 socket 状态变化，内核就可以快速从 rbr 查询O(1)，监视进程是否关心这个 socket。同时修改 rdllist，所以 rdllist 实际上是“就绪的 socket”的一个缓存。
+
+3. 内核复制 rdllist 的一部分或者全部（LT 和 ET），到专门的 epoll_event 作为出参。
+
+   所以监视进程，可以直接一个个处理数据，无需再遍历确认。
+
 ## Spring
+
+## SpringBoot启动过程
+
+1. 推断Web应用类型
+2. 设置Bootstrapper、ApplicationContextInitializer、ApplicationListener
+3. 推断main方法
+4. 创建并配置环境Environment
+5. 打印Banner
+6. 创建并配置ApplicationContext
+7. 刷新ApplicationContext（此处交由Spring处理，调用Spring的refresh()方法）实例化所有的bean
+8. 回调所有的ApplicationRunner和CommandLineRunner
 
 ### Spring Bean 加载过程
 
@@ -155,6 +201,15 @@ Netty中两大线程池：
 **完成这些工作的就是IOC容器，它帮助我们创建对象，然后在对象被使用的时候，将对象注入到这个对象中。而由于IOC创建对象是通过反射来创建的，所以其速度不如直接new对象**
 
 
+
+### Spring Cglib
+
+cglib与动态代理最大的**区别**就是
+
+- 使用动态代理的对象必须实现一个或多个接口
+- 使用cglib代理的对象则无需实现接口，达到代理类无侵入。
+
+cglib代理无需实现接口，通过生成类字节码实现代理，比反射稍快，不存在性能问题，但cglib会继承目标对象，需要重写方法，所以目标对象不能为final类。
 
 **Spring autowired 和resource注解区别**
 
@@ -444,6 +499,16 @@ CountDownLatch、CyclicBarrier、Sempahore 多线程并发三大利器
 
 ## 线程
 
+## 线程状态
+
+> 当因为获取不到锁而无法进入同步块时，线程处于 BLOCKED 状态。
+
+如果有线程长时间处于 BLOCKED 状态，要考虑是否发生了**死锁**（deadlock）的状况。
+
+BLOCKED 状态可以视作为一种特殊的 waiting，是传统 waiting 状态的一个细分：
+
+![](.\笔记\pic\java8\线程状态.svg)
+
 **Sleep和Wait两者的区别**
 
 （1）属于不同的两个类，sleep()方法是线程类（Thread）的静态方法，wait()方法是Object类里的方法。
@@ -473,6 +538,14 @@ wait(1000)与sleep(1000)的区别
 表示将锁释放1000毫秒，到时间后如果锁没有被其他线程占用，则再次得到锁，然后wait方法结束，执行后面的代码，如果锁被其他线程占用，则等待其他线程释放锁。
 
 注意，设置了超时时间的wait方法一旦过了超时时间，并不需要其他线程执行notify也能自动解除阻塞，但是如果没设置超时时间的wait方法必须等待其他线程执行notify。
+
+线程三种状态区别：
+
+（1）WAITING：进入等待状态，方式：wait/join/park方法进入无限等待，通过notify/notifyAll/unpark唤醒；
+
+（2）TIMED_WAITING：与WAITING类似，方式：a. 给定等待时间的wait/join/park方法；b. sleep方法；
+
+（3）BLOCKED：被动进入等待状态，方式：进入Synchronized块；
 
 ### 线程安全Violate
 
@@ -507,6 +580,29 @@ volatile 关键字禁止指令重排序有两层意思：
 > 图中，ThreadLocalMap维护一个Entry的数组，所以一个线程可以有多个ThreadLocal实例。
 
 ![](.\笔记\pic\java8\ThreadLocal核心土.png)
+
+## 线程池
+
+### 线程池拒绝策略
+
+- ThreadPoolExecutor.AbortPolicy:丢弃任务并抛出RejectedExecutionException异常。
+- ThreadPoolExecutor.DiscardPolicy：丢弃任务，但是不抛出异常。
+- ThreadPoolExecutor.DiscardOldestPolicy：丢弃队列最前面的任务，然后重新提交被拒绝的任务
+- ThreadPoolExecutor.CallerRunsPolicy：由调用线程（提交任务的线程）处理该任务
+
+## 线程上下文类加载器
+
+getContextClassLoader() setContextClassLoader用于获取和设置当前线程的上下文类加载器。
+
+如果没有设置，与父线程保持同样的类加载器。
+
+## 双亲委派机制
+
+缺陷：**JDK核心库**中提供了很多SPI（Service Provider Interface），常见的SPI包括JDBC、JCE、JNDI和JBI等，**JDK只规定了这些接口之间的逻辑关系**。但不提供具体实现。问题在于java.lang.sql中所有接口都是由**JDK提供**，加载这些接口的类加载器是**根加载器**，第三方厂商提供的驱动则由系统类加载器加载。第三方JDBC驱动包中的实现不会被加载。
+
+Java使用JDBC这个SPI完全透明了应用程序和第三方厂商数据库驱动的具体实现。不管数据库类型如何切换，只需要替换JDBC的驱动Jar和数据库动态名称即可。
+
+
 
 # 数据库
 
@@ -543,6 +639,8 @@ MySQL 索引分为 **主键索引** (或聚簇索引)和 **二级索引** (或�
 ![二级索引](.\笔记\pic\java8\二级索引.png)
 
 以select * from t where name='aaa'为例，MySQL Server对sql进行解析后发现name字段有索引可用，于是先在二级索引上根据name='aaa'找到主键id=17，然后根据主键17到主键索引上上找到需要的记录。
+
+当我们用树的结构来存储索引的时候，访问一个节点就要跟磁盘之间发生一次 IO。 InnoDB 操作磁盘的最小的单位是一页(或者叫一个磁盘块)。与主存不同，磁盘I/O存在机械运动耗费，因此磁盘I/O的时间消耗是巨大的。
 
 ## Redis
 
@@ -590,6 +688,23 @@ Redis 通过 链式哈希 解决冲突： 也就是同一个 桶里面的元素�
 
 ### Redis单线程
 
+Redis 中，单线程的性能瓶颈主要在网络IO操作上。也就是在读写网络 read/write 系统调用执行期间会占用大部分 CPU 时间。如果你要对一些大的键值对进行删除操作的话，在短时间内是删不完的，那么对于单线程来说就会阻塞后边的操作。
+
+**Reactor模式**
+
+- 传统阻塞IO模型客户端与服务端线程1:1分配，不利于进行扩展。
+- 伪异步IO模型采用线程池方式，但是底层仍然使用同步阻塞方式，限制了最大连接数。
+- Reactor 通过 I/O复用程序监控客户端请求事件，通过任务分派器进行分发。
+
+**单线程时代**
+
+- 基于 Reactor 单线程模式实现，通过IO多路复用程序接收到用户的请求后，全部推送到一个队列里，交给文件分派器进行处理。
+
+**多线程时代**
+
+- 单线程性能瓶颈主要在网络IO上。
+- 将网络数据读写和协议解析通过多线程的方式来处理 ，**对于命令执行来说，仍然使用单线程操作。**
+
 单线程什么好处？
 
 1. 不会因为线程创建导致的性能消耗；
@@ -600,6 +715,19 @@ Redis 通过 链式哈希 解决冲突： 也就是同一个 桶里面的元素�
 单线程是否没有充分利用 CPU 资源呢？
 
 因为 Redis 是基于内存的操作，CPU 不是 Redis 的瓶颈，Redis 的瓶颈最 有可能是机器内存的大小或者网络带宽 。既然单线程容易实现，而且 CPU 不会成为瓶颈，那就顺理成章地采用单线程的方案了。
+
+Redis并没有在网络请求模块和数据操作模块中使用多线程模型，主要是基于以下四个原因：
+
+- Redis 操作基于内存，绝大多数操作的性能瓶颈不在 CPU
+- 使用单线程模型，可维护性更高，开发，调试和维护的成本更低
+- 单线程模型，避免了线程间切换带来的性能开销
+- 在单线程中使用多路复用 I/O技术也能提升Redis的I/O利用率
+
+还是要记住：Redis并不是完全单线程的，只是有关键的网络IO和键值对读写是由一个线程完成的。
+
+Redis 6.0采用多个IO线程来处理网络请求，网络请求的解析可以由其他线程完成，然后把解析后的请求交由主线程进行实际的内存读写。提升网络请求处理的并行度，进而提升整体性能。
+
+但是，Redis 的多 IO 线程只是用来处理网络请求的，对于读写命令，Redis 仍然使用单线程来处理。
 
 ### Epoll IO多路复用
 
@@ -614,3 +742,27 @@ select/epoll 提供了基于事件的回调机制，即针对不同事件的发�
 ![RedisIO多路复用](.\笔记\pic\java8\RedisIO多路复用.png)
 
 Redis 线程不会阻塞在某一个特定的监听或已连接套接字上，也就是说，不会阻塞在某一个特定的客户端请求处理上。正因为此，Redis 可以同时和多个客户端连接并处理请求，从而提升并发性。
+
+### Redis 缓存雪崩、缓存穿透和缓存击穿
+
+- 缓存穿透：指缓存和数据库中都没有的数据，而用户不断发起请求，会导致数据库压力过大，严重会击垮数据库。
+
+- 缓存雪崩： 同一时间大量的Key失效。
+- 缓存击穿： 热点Key失效瞬间，持续的大并发就穿破缓存。
+
+防止缓存穿透策略：
+
+- 对参数进行校验，不合法参数直接返回。
+- 对Redis和缓存都未取到的数据同样缓存为null
+- Redis布隆过滤器判断Key是否存在库中
+
+防止缓存击穿策略：
+
+- 设置热点数据永远不过期
+- 加上互斥锁
+
+### Redis集群模式
+
+1. Redis Sentinal 着眼于高可用，在 master 宕机时会自动将 slave 提升为master，继续提供服务。
+
+2. Redis Cluster 着眼于扩展性，在单个 redis 内存不足时，使用 Cluster 进行分片存储。
