@@ -200,7 +200,24 @@ Netty中两大线程池：
 
 **完成这些工作的就是IOC容器，它帮助我们创建对象，然后在对象被使用的时候，将对象注入到这个对象中。而由于IOC创建对象是通过反射来创建的，所以其速度不如直接new对象**
 
+**初始化Bean**
 
+spring中支持3种初始化bean的方法：
+
+- xml中指定init-method方法
+- 使用@PostConstruct注解
+- 实现InitializingBean接口
+
+先后顺序： PostConstruct、InitializingBean、init-method
+
+
+
+### 别说FactoryBean没用
+
+说起 `FactoryBean` 就不得不提 `BeanFactory` ，因为面试官老喜欢问它们的区别。
+
+- BeanFactory：spring容器的顶级接口，管理bean的工厂。
+- FactoryBean：并非普通的工厂bean，它隐藏了实例化一些复杂Bean的细节，给上层应用带来了便利。
 
 ### Spring Cglib
 
