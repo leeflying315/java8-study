@@ -1,9 +1,6 @@
 package com.lifei.algorithm;
 
-import java.util.ArrayDeque;
-import java.util.ArrayList;
-import java.util.Deque;
-import java.util.List;
+import java.util.*;
 
 /**
  * 39. 组合总和
@@ -47,7 +44,8 @@ public class LeetCode39 {
     }
 
     public static List<List<Integer>> combinationSum(int[] candidates, int target) {
-//        Arrays.sort(candidates);
+        // 避免结果集重复
+        Arrays.sort(candidates);
         int len = candidates.length;
         List<List<Integer>> res = new ArrayList<>();
         if (len == 0) {
