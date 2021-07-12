@@ -1,5 +1,7 @@
 # java8-study
 
+**********
+
 # 基础知识
 
 ## 泛型
@@ -26,7 +28,7 @@ ava的泛型是由编译器在编译时实行的，编译器内部永远把所�
 
 # 学习异步响应式编程
 
-**HashMap数据结构**
+### HashMap数据结构
 
 HashMap采用了数组+链表/红黑树数据结构，在链表长度大于8时升级为红黑树，小于六时退化为链表。避免频繁数据结构转换。
 
@@ -45,6 +47,33 @@ HashMap插入数据过程：
 虽然平衡树解决了二叉查找树退化为近似链表的缺点，能够把查找时间控制在 O(logn)，不过却不是最佳的，因为平衡树要求每个节点的左子树和右子树的高度差至多等于1，这个要求实在是太严了，导致每次进行插入/删除节点的时候，几乎都会破坏平衡树的第二个规则，进而我们都需要通过左旋和右旋来进行调整，使之再次成为一颗符合要求的平衡树。
 
 实际应用中，若搜索的次数远远大于插入和删除，那么选择AVL，如果搜索，插入删除次数几乎差不多，应该选择RB。
+
+### CurrentHashMap
+
+在JDK1.7版本中，ConcurrentHashMap的数据结构是由一个Segment数组和多个HashEntry组成，主要实现原理是实现了锁分离的思路解决了多线程的安全问题
+
+JDK1.8的实现已经摒弃了Segment的概念，而是直接用Node数组+链表+红黑树的数据结构来实现，在锁的实现上，抛弃了原有的 Segment 分段锁，采用`CAS + synchronized`实现更加细粒度的锁。整个看起来就像是优化过且线程安全的HashMap，虽然在JDK1.8中还能看到Segment的数据结构，但是已经简化了属性，只是为了兼容旧版本。
+
+将锁的级别控制在了更细粒度的哈希桶数组元素级别，也就是说只需要锁住这个链表头节点（红黑树的根节点），就不会影响其他的哈希桶数组元素的读写，大大提高了并发度。
+
+> JDK1.8 中为什么使用内置锁 synchronized替换 可重入锁 ReentrantLock？
+
+- 在 JDK1.6 中，对 synchronized 锁的实现引入了大量的优化，并且 synchronized 有多种锁状态，会从无锁 -> 偏向锁 -> 轻量级锁 -> 重量级锁一步步转换。
+- 减少内存开销 。假设使用可重入锁来获得同步支持，那么每个节点都需要通过继承 AQS 来获得同步支持。但并不是每个节点都需要获得同步支持的，只有链表的头节点（红黑树的根节点）需要同步，这无疑带来了巨大内存浪费。
+
+> ConcurrentHashMap 的 get 方法是否要加锁，为什么？
+
+get 方法不需要加锁。因为 Node 的元素 value 和指针 next 是用 volatile 修饰的，在多线程环境下线程A修改节点的 value 或者新增节点的时候是对线程B可见的。
+
+这也是它比其他并发集合比如 Hashtable、用 Collections.synchronizedMap()包装的 HashMap 效率高的原因之一。
+
+> **JDK1.7 与 JDK1.8 中ConcurrentHashMap 的区别？**
+
+- 数据结构：取消了 Segment 分段锁的数据结构，取而代之的是数组+链表+红黑树的结构。
+- 保证线程安全机制：JDK1.7 采用 Segment 的分段锁机制实现线程安全，其中 Segment 继承自 ReentrantLock 。JDK1.8 采用`CAS+synchronized`保证线程安全。
+- 锁的粒度：JDK1.7 是对需要进行数据操作的 Segment 加锁，JDK1.8 调整为对每个数组元素加锁（Node）。
+- 链表转化为红黑树：定位节点的 hash 算法简化会带来弊端，hash 冲突加剧，因此在链表节点数量大于 8（且数据总量大于等于 64）时，会将链表转化为红黑树进行存储。
+- 查询时间复杂度：从 JDK1.7的遍历链表O(n)， JDK1.8 变成遍历红黑树O(logN)
 
 
 
@@ -171,7 +200,7 @@ Netty中两大线程池：
 
    所以监视进程，可以直接一个个处理数据，无需再遍历确认。
 
-## Spring
+# Spring
 
 ## SpringBoot启动过程
 
@@ -235,11 +264,9 @@ spring中支持3种初始化bean的方法：
 
 先后顺序： PostConstruct、InitializingBean、init-method
 
+### FactoryBean与BeanFactory
 
-
-### 别说FactoryBean没用
-
-说起 `FactoryBean` 就不得不提 `BeanFactory` ，因为面试官老喜欢问它们的区别。
+说起 `FactoryBean` 就不得不提 `BeanFactory` 
 
 - BeanFactory：spring容器的顶级接口，管理bean的工厂。
 - FactoryBean：并非普通的工厂bean，它隐藏了实例化一些复杂Bean的细节，给上层应用带来了便利。
@@ -291,15 +318,25 @@ JSR303：通过@Email，@Nullable，@Digits 等等注解进行邮箱、判空、
 
 静态类是单纯使用方法体，对象没有存在的价值。所以直接使用类名调用，不创建对象。静态类存在是为了快捷方便的使用里面的方法。
 
-**Spring中拦截器和过滤器的区别**
+### Spring中拦截器和过滤器的区别
 
-1. 拦截器不依赖与servlet容器是SpringMVC自带的，过滤器依赖于Servlet容器。
+1. 拦截器不依赖与servlet容器，是SpringMVC自带的，过滤器依赖于Servlet容器。
 2. 拦截器是基于java的反射机制的，而过滤器是基于函数回调。
 3. 拦截器只能对action请求起作用，而过滤器则可以对几乎所有的请求起作用。
 4. 拦截器可以访问controller上下文、值栈里的对象，而过滤器不能访问。(拦截器的preHandle方法在进入controller前执行，而拦截器的postHandle方法在执行完controller业务流程后，在视图解析器解析ModelAndView之前执行，可以操控Controller的ModelAndView内容。而afterCompletion是在视图解析器解析渲染ModelAndView完成之后执行的)( 过滤器是在服务器启动时就会创建的，只会创建一个实例，常驻内存，也就是说服务器一启动就会执行Filter的init(FilterConfig config)方法.当Filter被移除或服务器正常关闭时，会执行destroy方法)
-5. 拦截器可以获取IOC容器中的各个bean，而过滤器就不行，这点很重要，在拦截器里注入一个service，可以调用业务逻辑。(关于这句话的解读是：我们知道拦截器是SprinMVC自带的，而SpringMVC存在Controller层的，而controller层可以访问到service层，service层是不能访问service层的，而过滤器是客户端和服务端之间请求与响应的过滤)
+5. **拦截器可以获取IOC容器中的各个bean，而过滤器就不行**，这点很重要，在拦截器里注入一个service，可以调用业务逻辑。(关于这句话的解读是：我们知道拦截器是SprinMVC自带的，而SpringMVC存在Controller层的，而controller层可以访问到service层，service层是不能访问service层的，而过滤器是客户端和服务端之间请求与响应的过滤)
 6. 过滤器和拦截器触发时机、时间、地方不一样。(过滤器是在请求进入容器后，但请求进入servlet之前进行预处理的。请求结束返回也是在servlet处理完后，返回给前端之前,如果看不懂可以看7完后再来理解)
 7. 过滤器包裹住servlet，servlet包裹住拦截器。
+
+### 拦截器
+
+在Web开发中，我们经常会用到拦截器。而常用用于实现拦截的有：Filter、HandlerInterceptor、MethodInterceptor。我们也简单了解一下他们的区别：
+
+- Filter是Servlet规范规定的，不属于spring框架，也是用于请求的拦截。我们在写Filter时需要自己配置拦截的urlPatterns,它适合更粗粒度的拦截，在请求前后做一些编解码处理、Session验证等。
+- HandlerInterceptoer拦截的是请求地址，功能能跟Filter类似，但是提供更精细的的控制能力：在request被响应之前、request被响应之后、视图渲染之前以及request全部结束之后。所以针对请求地址做一些验证、预处理等操作比较合适。也可以用作计算一个请求的相应时间等。【必须过DispatcherServlet的请求才会被拦截】
+- MethodInterceptor利用的是AOP的实现机制，它拦截的目标是方法，即使不是controller中的方法。实现MethodInterceptor拦截器大致也分为两种，一种是实现MethodInterceptor接口，另一种利用AspectJ的注解或配置。
+
+拦截器中HandlerInterceptoer拦截后无法重写Request，因此Request中Body读取后无法再次被Controller中读取，无法实现对Body的校验，Filter可以重写Request后传入。
 
 **Configuration 和ConfigurationProperty注解**
 
@@ -534,6 +571,31 @@ CountDownLatch、CyclicBarrier、Sempahore 多线程并发三大利器
 ## CAS：Compare And Swap
 
 **CAS** 全称是 compare and swap，是一种用于在多线程环境下实现同步功能的机制。 `CAS` 操作包含三个操作数 ：内存位置、预期数值和新值。 `CAS` 的实现逻辑是将内存位置处的数值与预期数值相比较，若相等，则将内存位置处的值替换为新值。若不相等，则不做任何操作,这个操作是个原子性操作，java里面的 `AtomicInteger` 等类都是通过cas来实现的。
+
+(1) Synchronized(java自带的关键字)
+
+(2) lock 可重入锁 (可重入锁这个包java.util.concurrent.locks 底下有两个接口，分别对应两个类实现了这个两个接口： 
+
+​    (a)lock接口, 实现的类为：ReentrantLock类 可重入锁;
+
+​    (b)readwritelock接口，实现类为：ReentrantReadWriteLock 读写锁)
+
+也就是说有三种：
+
+（1）synchronized 是互斥锁；
+
+（2）ReentrantLock 顾名思义 ：可重入锁
+
+（3）ReentrantReadWriteLock :读写锁
+
+
+
+总结来说，Lock和synchronized有以下几点不同：
+
+1）Lock是一个接口，而synchronized是Java中的关键字，synchronized是内置的语言实现；
+2）当synchronized块结束时，会自动释放锁，lock一般需要在finally中自己释放。synchronized在发生异常时，会自动释放线程占有的锁，因此不会导致死锁现象发生；而Lock在发生异常时，如果没有主动通过unLock()去释放锁，则很可能造成死锁现象，因此使用Lock时需要在finally块中释放锁；
+3）lock等待锁过程中可以用interrupt来终端等待，而synchronized只能等待锁的释放，不能响应中断。
+4）lock可以通过trylock来知道有没有获取锁，而synchronized不能； 
 
 
 
@@ -772,6 +834,27 @@ Redis底层数据结构
 
 ![](.\笔记\pic\java8\Redis数据结构.png)
 
+Redis有序集合zset与普通集合set非常相似，是一个没有重复元素的字符串集合。不同之处是有序集合的每个成员都关联了一个评分（score）,这个评分（score）被用来按照从最低分到最高分的方式排序集合中的成员。集合的成员是唯一的，但是评分可以是重复了 。
+
+SortedSet(zset)是Redis提供的一个非常特别的数据结构，一方面它等价于Java的数据结构Map<String, Double>，可以给每一个元素value赋予一个权重score，另一方面它又类似于TreeSet，内部的元素会按照权重score进行排序，可以得到每个元素的名次，还可以通过score的范围来获取元素的列表。
+
+**C语言字符串结构**
+
+![](.\笔记\pic\java8\C语言字符串结构.png)
+
+**SDS字符串结构**
+
+![](.\笔记\pic\java8\SDS字符串接口.png)
+
+相比于 C 语言来说，也就多了几个字段，分别用来标识空闲空间和当前数据长度，但简直是神来之笔：
+
+- 可以 O(1)复杂度获取字符串长度；有 **len** 字段的存在，无需像 C 结构一样遍历计数。
+- 杜绝缓存区溢出；C 字符串不记录已占用的长度，所以需要提前分配足够空间，一旦空间不够则会溢出。而有 **free** 字段的存在，让 SDS 在执行前可以判断并分配足够空间给程序
+- 减少字符串修改带来的内存重分配次数；有 **free** 字段的存在，使 SDS 有了空间预分配和惰性释放的能力。
+- 对二进制是安全的；二进制可能会有字符和 C 字符串结尾符 **'\0'** 冲突，在遍历和获取数据时产生截断异常，而 SDS 有了 **len** 字段，准确了标识了数据长度，不需担心被中间的 **'\0'** 截断。
+
+Redis 在设计数据结构的时候出发点是一致的。总结起来就是一句话：空间换时间。
+
 ### Redis hash 字典
 
 Redis 整体就是一个 哈希表来保存所有的键值对，无论数据类型是 5 种的任意一种。哈希表，本质就是一个数组，每个元素被叫做哈希桶，不管什么数据类型，每个桶里面的 entry 保存着实际具体值的指针。
@@ -915,3 +998,66 @@ Redis 线程不会阻塞在某一个特定的监听或已连接套接字上，�
 1. 某个master和其slave同时失联。
 2. 某个master失联，并且其无slave。
 3. 超过半数的master同时失联。
+
+### Redis分布式锁
+
+利用SETNX命令， Set If Not eXists。A: SETNX lock 1 成功返回1。 B： SETNX lock 1. 失败返回0。 操作完成后使用DEL释放锁。
+
+问题： 容易出现锁不释放，由于线程问题或者进程突然挂掉。
+
+解决方案：对锁设置超时时间。
+
+问题：SETNX lock 1 ttl 10 是两条原子操作，无法保证设置有效期一定成功。
+
+解决方案：Redis 2.6.12版本后提供SET lock 1 EX 10 NX。 一条命令的原子操作。
+
+问题： 存在锁过期（客户端1操作太久超时自动释放）。2. 客户端1操作共享资源完成后，却又释放客户端2的锁。
+
+1.  预估锁最长时间，
+2. 客户端在加锁时，设置一个只有自己知道的「唯一标识」进去。SET lock $uuid EX 20 NX。在释放锁时，要先判断这把锁是否还归自己持有。写成LUA脚本，单线程执行完整个脚本。
+
+ ### Redis AOF和RDB
+
+#### AOF 
+
+Redis AOF 写策略： 先执行 后记录日志。
+
+![](.\笔记\pic\java8\RedisAOF.png)
+
+优点： 执行成功才会记录日志。
+
+存在问题：1. 记日志失败。 2.可能会阻塞下一个命令的执行。
+
+ AOF 配置项 appendfsync 的三个可选值：
+
+![](.\笔记\pic\java8\RedisAOF写回时机.png)
+
+AOF重写机制：
+
+AOF 重写机制就是在重写时，Redis 根据数据库的现状创建一个新的 AOF 文件，也就是说，读取数据库中的所有键值对，然后对每一个键值对用一条命令记录它的写入。和 AOF 日志由主线程写回不同，重写过程是由后台子进程 bgrewriteaof 来完成的，这也是为了避免阻塞主线程，导致数据库性能下降。
+
+![](.\笔记\pic\java8\RedisAOF重写过程.png)
+
+#### RDB
+
+Redis 提供了两个命令来生成 RDB 文件，分别是 save 和 bgsave。
+
+　　save：在主线程中执行，会导致阻塞；
+
+　　bgsave：创建一个子进程，专门用于写入 RDB 文件，避免了主线程的阻塞，这也是 Redis RDB 文件生成的默认配置。
+
+好了，这个时候，我们就可以通过 bgsave 命令来执行全量快照，这既提供了数据的可靠性保证，也避免了对 Redis 的性能影响。
+
+为了快照而暂停写操作，肯定是不能接受的。所以这个时候，Redis 就会借助操作系统提供的写时复制技术（Copy-On-Write, COW），在执行快照的同时，正常处理写操作。
+
+此时，如果主线程对这些数据也都是读操作（例如图中的键值对 A），那么，主线程和 bgsave 子进程相互不影响。但是，如果主线程要修改一块数据（例如图中的键值对 C），那么，这块数据就会被复制一份，生成该数据的副本（键值对 C’）。然后，主线程在这个数据副本上进行修改。同时，bgsave 子进程可以继续把原来的数据（键值对 C）写入 RDB 文件。
+
+
+
+# Linux
+
+linux 内核通过睡眠队列来组织所有等待某个事件的 task，而 wakeup 机制则可以异步唤醒整个睡眠队列上的 task，wakeup 逻辑在唤醒睡眠队列时，会遍历该队列链表上的每一个节点，调用每一个节点的 callback，从而唤醒睡眠队列上的每个 task。这样，在一个 connect 到达这个 lisent socket 的时候，内核会唤醒所有睡眠在 accept 队列上的 task。N 个 task 进程(线程)同时从 accept 返回，但是，只有一个 task 返回这个 connect 的 fd，其他 task 都返回-1(EAGAIN)。这是典型的 accept"惊群"现象。
+
+在 linux 2.6 以后的内核，用户进程 task 对 listen socket 进行 accept 操作，如果这个时候如果没有新的 connect 请求过来，用户进程 task 会阻塞睡眠在 listent fd 的睡眠队列上。这个时候，用户进程 Task 会被设置 WQ_FLAG_EXCLUSIVE 标志位，并加入到 listen socket 的睡眠队列尾部(这里要确保所有不带 WQ_FLAG_EXCLUSIVE 标志位的 non-exclusive waiters 排在带 WQ_FLAG_EXCLUSIVE 标志位的 exclusive waiters 前面)。根据前面的唤醒逻辑，一个新的 connect 到来，内核只会唤醒一个用户进程 task 就会退出唤醒过程，从而不存在了"惊群"现象。
+
+为提高服务器的并发处理能力，我们一般会使用 select/poll/epoll I/O 多路复用技术，同时为了充分利用多核 CPU，服务器上会起多个进程(线程)同时提供服务。于是，在某一时刻多个进程(线程)	阻塞在 select/poll/epoll_wait 系统调用上，当一个请求上来的时候，多个进程都会被 select/poll/epoll_wait 唤醒去 accept，然而只有一个进程(线程 accept 成功，其他进程(线程 accept 失败，然后重新阻塞在 select/poll/epoll_wait 系统调用上。可见，尽管 accept 不存在"惊群"，但是我们还是没能摆脱"惊群"的命运。只让一个进程去监听 listen socket 的可读事件，这样就可以避免"惊群"。

@@ -11,7 +11,11 @@ import com.lifei.algorithm.support.ListNode;
  * @Date: 2020/10/10
  */
 public class LeetCode142 {
-//    public ListNode detectCycle(ListNode head) {
-//
-//    }
+    public ListNode detectCycle(ListNode head) {
+        if(head == null) {
+            return null;
+        }
+        
+
+    }
 }
