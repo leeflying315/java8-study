@@ -139,6 +139,8 @@ Netty的ChannelHandler是业务代码和Netty框架交汇的地方，ChannelHand
 - 无意识：在ChannelHandler中编写了可能导致NIO线程阻塞的代码，但是用户没有意识到，包括但不限于查询各种数据存储器的操作、第三方服务的远程调用、中间件服务的调用、等待锁等
 - 有意识：用户知道有耗时逻辑需要额外处理，但是在处理过程中翻车了，比如主动切换耗时逻辑到业务线程池或者业务的消息队列做处理时发生阻塞，最典型的有对方是阻塞队列，锁竞争激烈导致耗时，或者投递异步任务给消息队列时异机房的网络耗时，或者任务队列满了导致等待，等等
 
+EventLoopGroup： 本身一个线程池，每个EventLoop是一个线程，并且持有自己的NIO Selector 选择器。客户端持有一个EventLoopGroup处理网络IO操作。服务端持有两个EventLoopGroup，其中boss组专门用来接收客户端发来的TCP连接请求，worker组专门用来处理完成三次握手后的网络IO请求。
+
 Netty中两大线程池：
 
 - NioEventLoopGroup
@@ -152,6 +154,10 @@ Netty中两大线程池：
 它们和JDK线程池的区别
 
 两者比起来，Netty线程池里的线程全部消除了对锁的竞争，而JDK的线程池没有这种设计，JDK线程池的线程会处理同一个阻塞队列。比如LinkedBlockingQueue，可能产生锁竞争。
+
+### Channel和EventLoop关系
+
+在netty中，NioEventLoop是EventLoop的一个实现，每个NioEventLoop会管理自己的Selector选择器和监听选择器就绪事件的线程。每个Channel在整个生命周期中固定关联到某一个EventLoop，但是每个NioEventLoop可以关联多个Channel。
 
 ### Netty 解码器Decoder、组合编解码器Codec
 
@@ -566,11 +572,9 @@ HttpServerResponseDTO httpServerResponseDTO = httpClientFactory.doPost(url, head
 
 # 多线程编程
 
-CountDownLatch、CyclicBarrier、Sempahore 多线程并发三大利器
+## 线程安全
 
-## CAS：Compare And Swap
-
-**CAS** 全称是 compare and swap，是一种用于在多线程环境下实现同步功能的机制。 `CAS` 操作包含三个操作数 ：内存位置、预期数值和新值。 `CAS` 的实现逻辑是将内存位置处的数值与预期数值相比较，若相等，则将内存位置处的值替换为新值。若不相等，则不做任何操作,这个操作是个原子性操作，java里面的 `AtomicInteger` 等类都是通过cas来实现的。
+### 锁
 
 (1) Synchronized(java自带的关键字)
 
@@ -588,22 +592,38 @@ CountDownLatch、CyclicBarrier、Sempahore 多线程并发三大利器
 
 （3）ReentrantReadWriteLock :读写锁
 
-
+Synchronized缺点： 1. 无法控制阻塞时长。2. 阻塞无法被中断。
 
 总结来说，Lock和synchronized有以下几点不同：
 
 1）Lock是一个接口，而synchronized是Java中的关键字，synchronized是内置的语言实现；
 2）当synchronized块结束时，会自动释放锁，lock一般需要在finally中自己释放。synchronized在发生异常时，会自动释放线程占有的锁，因此不会导致死锁现象发生；而Lock在发生异常时，如果没有主动通过unLock()去释放锁，则很可能造成死锁现象，因此使用Lock时需要在finally块中释放锁；
 3）lock等待锁过程中可以用interrupt来终端等待，而synchronized只能等待锁的释放，不能响应中断。
-4）lock可以通过trylock来知道有没有获取锁，而synchronized不能； 
+4）lock可以通过trylock来知道有没有获取锁，而synchronized不能；
+
+CountDownLatch、CyclicBarrier、Sempahore 多线程并发三大利器
+
+## CAS：Compare And Swap
+
+**CAS** 全称是 compare and swap，是一种用于在多线程环境下实现同步功能的机制。 `CAS` 操作包含三个操作数 ：内存位置、预期数值和新值。 `CAS` 的实现逻辑是将内存位置处的数值与预期数值相比较，若相等，则将内存位置处的值替换为新值。若不相等，则不做任何操作,这个操作是个原子性操作，java里面的 `AtomicInteger` 等类都是通过cas来实现的。
+
+ 
 
 
 
 ![](.\笔记\pic\java8\RetainLock流程.png)
 
-## 线程
-
 ## 线程状态
+
+线程生命周期：
+
+- NEW
+- RUNNABLE
+- RUNNING
+- BLOCKED
+- TERMINATE····································································································································································································································································
+
+
 
 > 当因为获取不到锁而无法进入同步块时，线程处于 BLOCKED 状态。
 
@@ -651,6 +671,8 @@ wait(1000)与sleep(1000)的区别
 
 （3）BLOCKED：被动进入等待状态，方式：进入Synchronized块；
 
+
+
 ### 线程安全Violate
 
 ​	如果一个变量在多个CPU中都存在缓存（一般在多线程编程时才会出现），那么就可能存在缓存不一致的问题 。
@@ -693,6 +715,26 @@ volatile 关键字禁止指令重排序有两层意思：
 - ThreadPoolExecutor.DiscardPolicy：丢弃任务，但是不抛出异常。
 - ThreadPoolExecutor.DiscardOldestPolicy：丢弃队列最前面的任务，然后重新提交被拒绝的任务
 - ThreadPoolExecutor.CallerRunsPolicy：由调用线程（提交任务的线程）处理该任务
+
+# JVM 类加载器
+
+## JVM内置三大类加载器
+
+### Bootstrap ClassLoader
+
+根类加载器，无父类加载器，C++编写，加载虚拟机核心库。如java.lang包下所有类。
+
+### Ext ClassLoader
+
+扩展类加载器，父类为根加载器，主要加载Jre\lib\ext下类库。Java语言实现。
+
+### Application ClassLoader
+
+系统类加载器，负责加载classpath下的类库资源，例如引入的三方jar包。
+
+## 自定义类加载器
+
+
 
 ## 线程上下文类加载器
 

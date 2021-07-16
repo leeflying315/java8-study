@@ -15,7 +15,8 @@ public class LeetCode142 {
         if(head == null) {
             return null;
         }
-        
+
+        return null;
 
     }
 }
