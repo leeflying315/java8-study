@@ -12,19 +12,19 @@ import java.nio.file.Paths;
  * @Date 2021/2/3
  */
 // 自定义类加载器必须是ClassLoader的直接或者间接子类
-public class MyClassLoader extends ClassLoader {
+public class MyClassLoader2 extends ClassLoader {
     // 自定义默认的class存放路径
-    private final static Path DEFAULT_CLASS_DIR = Paths.get("E:\\workspace\\java8-study", "classloader1");
+    private final static Path DEFAULT_CLASS_DIR = Paths.get("E:\\workspace\\java8-study", "classloader2");
 
     private final Path classDir;
 
-    public MyClassLoader() {
+    public MyClassLoader2() {
         super();
         this.classDir = DEFAULT_CLASS_DIR;
     }
 
     // 允许传入指定路径的class路径
-    public MyClassLoader(String classDir) {
+    public MyClassLoader2(String classDir) {
         super();
         this.classDir = Paths.get(classDir);
     }

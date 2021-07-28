@@ -2,6 +2,9 @@ package com.lifei.algorithm;
 
 import com.lifei.algorithm.support.ListNode;
 
+import java.util.HashSet;
+import java.util.Set;
+
 /**
  * @Author: lifei
  * @Description: 142. 环形链表 II
@@ -12,11 +15,17 @@ import com.lifei.algorithm.support.ListNode;
  */
 public class LeetCode142 {
     public ListNode detectCycle(ListNode head) {
-        if(head == null) {
-            return null;
+        Set<ListNode> set = new HashSet<>();
+        while (true) {
+            if (head == null)
+                return null;
+            if (set.contains(head)) {
+                return head;
+            } else {
+                set.add(head);
+                head = head.next;
+            }
         }
-
-        return null;
 
     }
 }
