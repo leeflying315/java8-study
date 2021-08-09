@@ -1,7 +1,5 @@
 package com.lifei.designPattern.singleton;
 
-import jdk.internal.net.http.websocket.WebSocketImpl;
-
 import java.net.Socket;
 import java.sql.Connection;
 
