@@ -770,6 +770,22 @@ volatile 关键字禁止指令重排序有两层意思：
 - ThreadPoolExecutor.DiscardOldestPolicy：丢弃队列最前面的任务，然后重新提交被拒绝的任务
 - ThreadPoolExecutor.CallerRunsPolicy：由调用线程（提交任务的线程）处理该任务
 
+### 线程池状态
+
+ThreadPoolExecutor线程池有5个状态，分别是：
+
+1. RUNNING：可以接受新的任务，也可以处理阻塞队列里的任务
+2. SHUTDOWN：不接受新的任务，但是可以处理阻塞队列里的任务
+3. STOP：不接受新的任务，不处理阻塞队列里的任务，中断正在处理的任务
+4. TIDYING：过渡状态，也就是说所有的任务都执行完了，当前线程池已经没有有效的线程，这个时候线程池的状态将会TIDYING，并且将要调用terminated方法
+5. TERMINATED：终止状态。terminated方法调用完成以后的状态
+
+### 线程池队列策略
+
+- ArrayBlockingQueue：在ArrayBlockingQueue实现中，take()和put()用的是统一的一个单锁。
+- LinkedBlockingQueue：在LinkedBlockingQueue类的实现中，是对put()和take()分别使用了两个不同的锁，都使用了ReentrantLock实现。
+- SynchronousQueue：SynchronousQueue的特点是，读取操作take()和放入操作put()同时完成才会同时解开阻塞,即一个元素只有当其本身被take()的时候put()才会被唤醒。没有容量的概念。
+
 # JMM
 
 Java 的对象可以分为基本数据类型和普通对象。

@@ -8,6 +8,7 @@ import java.util.function.Supplier;
 /**
  * @Author lifei
  * @Description:
+ * 使用java8 consumer语法实现模板类
  * @Date 2021/8/30
  */
 public class BankBusinessHandler {
