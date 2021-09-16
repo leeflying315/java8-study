@@ -26,6 +26,109 @@ ava的泛型是由编译器在编译时实行的，编译器内部永远把所�
 
 **局限三**：无法判断带泛型的类型：正是由于泛型时基于类型擦除实现的，所以，**泛型类型无法向上转型**。
 
+## 代理
+
+### 静态代理
+
+在说动态代理前，还是先说说静态代理。所谓静态代理，就是通过声明一个明确的代理类来访问源对象。
+
+~~~java
+public class Student implements Person{
+
+    private String name;
+
+    public Student() {
+    }
+
+    public Student(String name) {
+        this.name = name;
+    }
+
+    @Override
+    public void wakeup() {
+        System.out.println(StrUtil.format("学生[{}]早晨醒来啦",name));
+    }
+
+    @Override
+    public void sleep() {
+        System.out.println(StrUtil.format("学生[{}]晚上睡觉啦",name));
+    }
+~~~
+
+**PersonProxy:**
+
+```java
+public class PersonProxy implements Person {
+
+    private Person person;
+
+    public PersonProxy(Person person) {
+        this.person = person;
+    }
+
+    @Override
+    public void wakeup() {
+        System.out.println("早安~");
+        person.wakeup();
+    }
+
+    @Override
+    public void sleep() {
+        System.out.println("晚安~");
+        person.sleep();
+    }
+}
+```
+
+这种模式虽然好理解，但是缺点也很明显：
+
+- 会存在大量的冗余的代理类，这里演示了2个接口，如果有10个接口，就必须定义10个代理类。
+- 不易维护，一旦接口更改，代理类和目标类都需要更改。
+
+### 动态代理
+
+动态代理，通俗点说就是：无需声明式的创建java代理类，而是在运行过程中生成"虚拟"的代理类，被ClassLoader加载。从而避免了静态代理那样需要声明大量的代理类。
+
+#### JDK动态代理
+
+JDK从1.3版本就开始支持动态代理类的创建。主要核心类只有2个：`java.lang.reflect.Proxy`和`java.lang.reflect.InvocationHandler`。
+
+可以看到，相对于静态代理类来说，无论有多少接口，这里只需要一个代理类。核心代码也很简单。唯一需要注意的点有以下2点：
+
+- JDK动态代理是需要声明接口的，创建一个动态代理类必须得给这个”虚拟“的类一个接口。可以看到，这时候经动态代理类创造之后的每个bean已经不是原来那个对象了。
+
+- 为什么这里`JdkProxy`还需要构造传入原有的bean呢？因为处理完附加的功能外，需要执行原有bean的方法，以完成`代理`的职责。
+
+  这里`JdkProxy`最核心的方法就是
+
+  ```java
+  public Object invoke(Object proxy, Method method, Object[] args) throws Throwable
+  ```
+
+  其中proxy为代理过之后的对象(并不是原对象)，method为被代理的方法，args为方法的参数。
+
+  如果你不传原有的bean，直接用`method.invoke(proxy, args)`的话，那么就会陷入一个死循环。
+
+#### cglib 动态代理
+
+Spring在5.X之前默认的动态代理实现一直是jdk动态代理。但是从5.X开始，spring就开始默认使用Cglib来作为动态代理实现。并且springboot从2.X开始也转向了Cglib动态代理实现。
+
+是什么导致了spring体系整体转投Cglib呢，jdk动态代理又有什么缺点呢？
+
+Cglib是一个开源项目，它的底层是字节码处理框架ASM，Cglib提供了比jdk更为强大的动态代理。主要相比jdk动态代理的优势有：
+
+- jdk动态代理只能基于接口，代理生成的对象只能赋值给接口变量，而Cglib就不存在这个问题，Cglib是通过生成子类来实现的，代理对象既可以赋值给实现类，又可以赋值给接口。
+- Cglib速度比jdk动态代理更快，性能更好。
+
+## 各种动态代理的性能如何
+
+前面介绍了4种动态代理对于同一例子的实现。对于代理的模式可以分为2种：
+
+- JDK动态代理采用接口代理的模式，代理对象只能赋值给接口，允许多个接口
+- Cglib，Javassist，ByteBuddy这些都是采用了子类代理的模式，代理对象既可以赋值给接口，又可以复制给具体实现类
+
+ 
+
 # 学习异步响应式编程
 
 ### HashMap数据结构
