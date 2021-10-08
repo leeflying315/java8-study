@@ -12,6 +12,6 @@ package com.lifei.algorithm;
  */
 public class LeetCode240 {
     public boolean searchMatrix(int[][] matrix, int target) {
-
+        return false;
     }
 }
