@@ -396,7 +396,7 @@ spring中支持3种初始化bean的方法：
 - BeanFactory：spring容器的顶级接口，管理bean的工厂。
 - FactoryBean：并非普通的工厂bean，它隐藏了实例化一些复杂Bean的细节，给上层应用带来了便利。
 
-### Spring Cglib
+## Spring 动态代理Cglib
 
 cglib与动态代理最大的**区别**就是
 
@@ -445,7 +445,7 @@ JSR303：通过@Email，@Nullable，@Digits 等等注解进行邮箱、判空、
 
 静态类是单纯使用方法体，对象没有存在的价值。所以直接使用类名调用，不创建对象。静态类存在是为了快捷方便的使用里面的方法。
 
-### Spring中拦截器和过滤器的区别
+## Spring中拦截器和过滤器的区别
 
 1. 拦截器不依赖与servlet容器，是SpringMVC自带的，过滤器依赖于Servlet容器。
 2. 拦截器是基于java的反射机制的，而过滤器是基于函数回调。
@@ -465,19 +465,46 @@ JSR303：通过@Email，@Nullable，@Digits 等等注解进行邮箱、判空、
 
 拦截器中HandlerInterceptoer拦截后无法重写Request，因此Request中Body读取后无法再次被Controller中读取，无法实现对Body的校验，Filter可以重写Request后传入。
 
-<<<<<<< Updated upstream
-**Configuration 和ConfigurationProperty注解**
-
-### Spring Starter 自动加载机制
+## Spring Starter 自动加载机制
 
 1. Spring Boot在启动时扫描项目所依赖的JAR包，寻找包含`spring.factories`文件的JAR包，
 2. 然后读取`spring.factories`文件获取配置的自动配置类AutoConfiguration`，
 3. 然后将自动配置类下满足条件(`@ConditionalOnXxx`)的@Bean放入到Spring容器中(Spring Context)
 4. 这样使用者就可以直接用来注入，因为该类已经在容器中了
 
-=======
->>>>>>> Stashed changes
-## HttpClient
+## Spring注解
+
+### @Transaction
+
+失效条件：
+
+- 同一个类中，事务方法为初始，则调用该类中其他不含有事务方法事务生效，如果是不含有事务方法调用事务方法则不生效，同一个类中事务是否开启会采取入口的设置。
+- 不同类方法调用
+
+| A类a方法 | 调用 | B类b方法 | 调用 | B类c方法 |                                                  |
+| -------- | ---- | -------- | ---- | -------- | :----------------------------------------------- |
+| 有事务   |      | 没事务   |      | 没事务   | a方法b方法c方法事务生效，且在同一个事务中        |
+| 没有事务 |      | 有事务   |      | 没事务   | b方法c方法事务生效，且在同一个事务,a方法没有事务 |
+| 没有事务 |      | 没有事务 |      | 有事务   | a方法b方法c方法事务均不生效                      |
+
+- 多实例多线程中事务的影响
+
+1. 某一个实例的事务中如果插入表或者更新表，则在当前事务中再次查询是执行后的结果，而其他实例或者线程则读取的还是未修改的结果
+
+- 异常
+
+事务方法中抛出RuntimeException和Error时才会生效
+
+事务异常回滚不会回滚对变量的修改
+
+ **@Transactional 生效的条件**
+
+- 除非特殊配置（比如使用 AspectJ 静态织入实现 AOP），否则只有定义在 public 方法上的 @Transactional 才能生效。原因是，Spring 默认通过动态代理的方式实现 AOP，对目标方法进行增强，private/protected 方法无法代理到，Spring 自然也无法动态增强事务处理逻辑。
+- 必须通过代理过的类从外部调用目标方法才能生效
+
+
+
+# HttpClient
 
 **ConnectionRequestTimeout**
 
@@ -991,6 +1018,16 @@ tinyint(1)tinyint(2)tinyint(3)tinyint(4)在平时工作中括号 里面的值设
 3. 通过 SqlSession 可以获取到 Mapper 接口对应的动态代理对象，去执行数据库的相关操作
 4. 动态代理对象执行数据库的操作，由 SqlSession 执行相应的方法，在他的内部调用 Executor 执行器去执行数据库的相关操作
 5. 在 Executor 执行器中，会进行相应的处理，将数据库执行结果返回
+
+## Mysql 执行逻辑
+
+通过Mysql的架构分层，我们首先就可以很清晰的了解到一个SQL的大概的执行过程。
+
+1. 首先客户端发送请求到服务端，建立连接。
+2. 服务端先看下查询缓存是否命中，命中就直接返回，否则继续往下执行。
+3. 接着来到解析器，进行语法分析，一些系统关键字校验，校验语法是否合规。
+4. 然后优化器进行SQL优化，比如怎么选择索引之类，然后生成执行计划。
+5. 最后执行引擎调用存储引擎API查询数据，返回结果。
 
 ## Mysql 索引
 
