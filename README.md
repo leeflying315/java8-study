@@ -906,6 +906,12 @@ ThreadPoolExecutor线程池有5个状态，分别是：
 
 # JMM
 
+Java内存模型（Java Memory Model ,JMM）就是一种符合内存模型规范的，屏蔽了各种硬件和操作系统的访问差异的，保证了Java程序在各种平台下对内存的访问都能保证效果一致的机制及规范。
+
+Java内存模型规定了所有的变量都存储在主内存中，每条线程还有自己的工作内存，线程的工作内存中保存了该线程中是用到的变量的主内存副本拷贝，线程对变量的所有操作都必须在工作内存中进行，而不能直接读写主内存。不同的线程之间也无法直接访问对方工作内存中的变量，线程间变量的传递均需要自己的工作内存和主存之间进行数据同步进行。
+
+而JMM就作用于工作内存和主存之间数据同步过程。他规定了如何做数据同步以及什么时候做数据同步。
+
 Java 的对象可以分为基本数据类型和普通对象。
 
 对于普通对象来说，JVM 会首先在堆上创建对象，然后在其他地方使用的其实是它的引用。比如，把这个引用保存在虚拟机栈的局部变量表中。
@@ -997,6 +1003,8 @@ JMM 是一个抽象概念，由于 CPU 多核多级缓存、为了优化代码�
 
 Java使用JDBC这个SPI完全透明了应用程序和第三方厂商数据库驱动的具体实现。不管数据库类型如何切换，只需要替换JDBC的驱动Jar和数据库动态名称即可。
 
+
+
 ### JVM内置三大类加载器
 
 #### Bootstrap ClassLoader
@@ -1018,6 +1026,12 @@ Java使用JDBC这个SPI完全透明了应用程序和第三方厂商数据库驱
 如果没有设置，与父线程保持同样的类加载器。
 
 **getContextClassLoader() setContextClassLoader用于获取和设置当前线程的上下文类加载器。**
+
+### 初始类雷加载器
+
+这里着重要说的两个概念是`初始类加载器`和`定义类加载器`。举个栗子说吧，AClassLoader->BClassLoader->CClassLoader，表示AClassLoader在加载类的时候会委托BClassLoader类加载器来加载，BClassLoader加载类的时候会委托CClassLoader来加载，假如我们使用AClassLoader来加载X这个类，而X这个类最终是被CClassLoader来加载的，那么我们称**CClassLoader为X类的定义类加载器，而AClassLoader为X类的初始类加载器**，**JVM在加载某个类的时候对AClassLoader和CClassLoader进行记录，记录的数据结构是一个叫做SystemDictionary的hashtable，其key是根据ClassLoader对象和类名算出来的hash值（其实是一个entry，可以根据这个hash值找到具体的index位置，然后构建一个包含kalssName和classloader对象的entry放到map里），而value是真正的由定义类加载器加载的Klass对象，因为初始类加载器和定义类加载器是不同的classloader，因此算出来的hash值也是不同的，因此在SystemDictionary里会有多项值的value都是指向同一个Klass对象。**
+
+那么JVM为什么要分这两种类加载器呢，其实主要是为了快速找到已经加载的类，比如我们已经通过AClassLoader来触发了对X类的加载，当我们再次使用AClassLoader这个类加载器来加载X这个类的时候就不需要再委托给BClassLoader去找了，因为加载过的类在JVM里有这个类加载器的直接加载的记录，只需要直接返回对应的Klass对象即可。
 
 #### 数据库驱动初始化
 
